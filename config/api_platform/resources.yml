@@ -1,0 +1,3 @@
+# config/api_platform/resources.yaml
+resources:
+    App\Entity\Config\User:

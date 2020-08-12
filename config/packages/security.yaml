@@ -1,0 +1,41 @@
+# api/config/packages/security.yaml
+security:
+    encoders:
+        App\Entity\Config\User:
+            algorithm: bcrypt
+            cost: 16
+
+    # https://symfony.com/doc/current/security.html#where-do-users-come-from-user-providers
+    providers:
+        # used to reload user from session & other features (e.g. switch_user)
+        app_user_provider:
+            entity:
+                class: App\Entity\Config\User
+                property: username
+
+    firewalls:
+        main:
+            pattern:  ^/api/login
+            stateless: true
+            anonymous: true
+            provider: app_user_provider
+            json_login:
+                check_path: /api/login_check
+                username_path: username
+                password_path: password
+                success_handler: lexik_jwt_authentication.handler.authentication_success
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+
+        api:
+            pattern:   ^/api/mmm
+            stateless: true
+            anonymous: false
+            guard:
+                authenticators:
+                    - lexik_jwt_authentication.jwt_token_authenticator
+
+    access_control:
+        - { path: ^/api/^, roles: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/api/login, roles: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/api/login_check, roles: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/docs, roles: IS_AUTHENTICATED_ANONYMOUSLY  }

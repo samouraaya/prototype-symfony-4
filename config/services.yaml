@@ -1,0 +1,77 @@
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
+parameters:
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/*'
+        exclude: '../src/{DependencyInjection,Entity,Migrations,Tests,Kernel.php}'
+
+    # controllers are imported separately to make sure services can be injected
+    # as action arguments even if you don't extend any base controller class
+    App\Controller\:
+        resource: '../src/Controller'
+        tags: ['controller.service_arguments']
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones
+    acme_api.event.authentication_success_listener:
+        class: App\EventListener\Config\Lexik\AuthenticationSuccessListener
+        arguments: ["@doctrine.orm.default_entity_manager"]
+        tags:
+            - { name: kernel.event_listener, event: lexik_jwt_authentication.on_authentication_success, method: onAuthenticationSuccessResponse }
+    acme_api.event.authentication_failure_listener:
+        class: App\EventListener\Config\Lexik\AuthenticationFailureListener
+        tags:
+            - { name: kernel.event_listener, event: lexik_jwt_authentication.on_authentication_failure, method: onAuthenticationFailureResponse }
+    acme_api.event.jwt_invalid_listener:
+        class: App\EventListener\Config\Lexik\JWTInvalidListener
+        tags:
+            - { name: kernel.event_listener, event: lexik_jwt_authentication.on_jwt_invalid, method: onJWTInvalid }
+    acme_api.event.jwt_notfound_listener:
+        class: App\EventListener\Config\Lexik\JWTNotFoundListener
+        tags:
+            - { name: kernel.event_listener, event: lexik_jwt_authentication.on_jwt_not_found, method: onJWTNotFound }
+    acme_api.event.jwt_expired_listener:
+        class: App\EventListener\Config\Lexik\JWTExpiredListener
+        tags:
+            - { name: kernel.event_listener, event: lexik_jwt_authentication.on_jwt_expired, method: onJWTExpired }
+    App\EventListener\Config\Exception\ExceptionListener:
+        tags:
+            - { name: kernel.event_listener, event: kernel.exception }
+    app.api.event.access_permission_listener:
+        class: App\EventListener\Config\Access\AccessPermissionListener
+        arguments: ['@security.token_storage','@doctrine.orm.entity_manager','@service_container']
+        tags:
+            - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest }
+    app.hash_password_listener:
+        class: App\EventListener\Config\Doctrine\HashPasswordListener
+        autowire: true
+        tags:
+            - { name: doctrine.event_listener , event: prePersist }
+            - { name: doctrine.event_listener , event: preUpdate }
+    app.doctrine.pre_persist_listener:
+        class: App\EventListener\Config\Doctrine\PrePersistListener
+        public: true
+        arguments:
+            - '@service_container'
+        tags:
+            - { name: doctrine.event_listener, event: prePersist, method: prePersist }
+    app_role_interface_service:
+        public: true
+        class: App\Services\Config\RoleInterfaces
+        arguments: [ '@router','@doctrine.orm.entity_manager','@security.token_storage','@request_stack' ]
+    App\Mercure\JwtProvider:
+        arguments:
+            $secret: '%env(MERCURE_JWT_TOKEN)%'
+    App\DataPersister\Referenciel\ReferencielDataPersister: ~
